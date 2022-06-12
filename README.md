@@ -11,22 +11,26 @@ For example `curl http://localhost:8080/seepoints`
 Another example:
 
 ```curl
-curl -X PUT http://localhost:8080/addtransactions
-   -H 'Content-Type: application/json'
-   -d '{ "payer": "DANNON", "points": 1000, "timestamp": "2020-11-02T14:00:00Z" }'
+curl --location --request GET 'http://localhost:8080/see'
 ```
 
 ```curl
-curl -X PUT http://localhost:8080/spendpts
-   -H 'Content-Type: application/json'
-   -d '{ "points": 5000}'
+curl --location --request PUT 'http://localhost:8080/add' \
+--header 'Content-Type: application/json' \
+--data-raw '{ "payer": "DANNON", "points": 1000, "timestamp": "2020-11-02T14:00:00Z" }'
+```
+
+```curl
+curl --location --request PUT 'http://localhost:8080/spend' \
+--header 'Content-Type: application/json' \
+--data-raw '{ "points": 5000 }'
 ```
 
 Routes are specified as follows:
 
-- /addtransactions : allows transaction data to be added to the user account
-- /spendpts :  allows points to be spent on the user account
-- /seepoints : returns point balances as they correspond to each payer
+- /add : allows transaction data to be added to the user account
+- /spend :  allows points to be spent on the user account
+- /see : returns point balances as they correspond to each payer
 
 Dependencies: NodeJS
 Other dependencies: npm install node-fetch (see package.json)

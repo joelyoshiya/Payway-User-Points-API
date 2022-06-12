@@ -22,11 +22,12 @@ class userAccount {
     constructor (transactions){
         this.totPoints = 0; //initialized to zero
         this.myTransactions = []; //array of transactions coming from add route
+        this.myPayers = new Map(); // Map containing payer:points key-value pairs
 
-        this.myTransactions.push(JSON.parse(transaction)); //represent a transaction being added (JSobject)
-        this.myTransactions.push(JSON.parse(transaction2));
-        this.myTransactions.forEach(transaction => this.totPoints += transaction.points);
-        console.log("my total points: " + this.totPoints);
+        // this.myTransactions.push(JSON.parse(transaction)); //represent a transaction being added (JSobject)
+        // this.myTransactions.push(JSON.parse(transaction2));
+        // this.myTransactions.forEach(transaction => this.totPoints += transaction.points);
+        //console.log("my total points: " + this.totPoints);
     }    
 }
 
@@ -44,9 +45,28 @@ class userAccount {
 function addTransaction(data, acct){
     //turn JSON string into object
     let transaction = JSON.parse(data);
-    acct.myTransactions.push(transaction);
+
+    if( acct.myPayers.has(transaction.payer)){
+        acct.myPayers.get(transaction.payer) += transaction.points;
+    }else{
+        acct.myPayers.set(transaction.payer, transaction.points);
+    }
+
+    //push transaction into proper location based on date (old -> new)
+    // will use Array.prototype.splice() based on Date value
+    // insert where the transaction.timestamp value is both greater than or equal to the index before and less than or equal to index after
+    let date = new Date(transaction.timestamp);
+    for (let index = 0; index < acct.myTransactions.length; index++) {
+        let currDate = new Date(acct.myTransactions[index].timestamp);
+        if(date < currDate){
+            acct.myTransactions.splice(index, 0, transaction);
+            break;
+        }else if(index == acct.myTransactions.length - 1){
+            acct.myTransactions.push(transaction);
+        }
+    }
+    //acct.myTransactions.push(transaction);
     acct.totPoints += transaction.points;
-    console.log("my total points: " + acct.totPoints);
 return 200;
 }
 
@@ -63,6 +83,13 @@ return 200;
     Returns: a list of points spent ​{ "payer": <string>, "points": <integer> }​ 
 */
 function spendPoints(numPoints){
+    // check a ds holding transactions sorted old to new
+    // check if subtracting transaction pts would put payer total sum neg
+    // if not, spend the points
+    // if so, skip transaction
+    // check if numPoints spent, if not move to next oldest transaction
+
+    acct.totPoints -= numPoints;
 }
 
 /*  
@@ -73,6 +100,7 @@ function spendPoints(numPoints){
     Returns: a list of point balances per payer ​{ "payer": <string>, "points": <integer> }​ 
 */
 function retPointBalances(acct){
+    //return a data struct that only has payers and total points
     var pointBalances = {}; 
     class payer_points {
         constructor(payer, points){
@@ -105,21 +133,24 @@ function runServer(){
         response.on('error', (err) => {
         console.error(err);
         });
-        response.setHeader('Content-Type', 'application/json');
         switch (request.url) {
-            case "/addtransactions":
-                status_code = addTransaction(request.body, acct);
+            case "/add":
+                let status_code = addTransaction(body, acct);
+                console.log("tot points now: " + acct.totPoints)
                 response.writeHead(status_code);
+                response.end("transactions added");
                 break
-            case "/spendpts":
-                response.writeHead(200);
-                // status_code = spendPoints(request,body, acct);
-                //response.end();
+            case "/spend":
+                let expenses = spendPoints(request,body, acct);
+                response.writeHead(200, {'Content-Type': 'application/json'})
+                response.write(expenses);
+                response.end();
                 break
-            case "/seepoints":
-                response.writeHead(200)
+            case "/see":
+                response.writeHead(200, {'Content-Type': 'application/json'})
                 let pts = JSON.stringify(retPointBalances(acct));
                 console.log("pts :" + pts);
+                response.write(pts);
                 response.end(pts);
                 break
             default:
@@ -127,7 +158,6 @@ function runServer(){
                 response.end(JSON.stringify({error:"Resource not found"}));
         }
         // Note: the 2 lines above could be replaced with this next one:
-        // response.writeHead(200, {'Content-Type': 'application/json'})
 
         //const responseBody = { headers, method, url, body };
 
