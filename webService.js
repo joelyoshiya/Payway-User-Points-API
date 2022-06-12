@@ -55,18 +55,22 @@ function addTransaction(data){
     }
     acct.myPayers.forEach((value,key) => console.log(key,value));
 
-    //push transaction into proper location based on date (old -> new)
-    // will use Array.prototype.splice() based on Date value
-    // insert where the current transactions timestamp is found to be earlier than the current index (start from beginning), else push on to end
-    let date = new Date(transaction.timestamp);
-    for (let index = 0; index < acct.myTransactions.length; index++) {
-        let currDate = new Date(acct.myTransactions[index].timestamp);
-        if(date < currDate){
-            acct.myTransactions.splice(index, 0, transaction);
-            break;
-        }else if(index == (acct.myTransactions.length - 1)){
-            console.log("at the end!");
-            acct.myTransactions.push(transaction);
+    if(acct.myTransactions.length == 0){
+        acct.myTransactions.push(transaction);
+    }else{
+        //push transaction into proper location based on date (old -> new)
+        // will use Array.prototype.splice() based on Date value
+        // insert where the current transactions timestamp is found to be earlier than the current index (start from beginning), else push on to end
+        let date = new Date(transaction.timestamp);
+        for (let index = 0; index < acct.myTransactions.length; index++) {
+            let currDate = new Date(acct.myTransactions[index].timestamp);
+            if(date < currDate){
+                acct.myTransactions.splice(index, 0, transaction);
+                break;
+            }else if(index == (acct.myTransactions.length - 1)){
+                acct.myTransactions.push(transaction);
+                break;
+            }
         }
     }
     acct.myTransactions.forEach(transaction => console.log(transaction));
