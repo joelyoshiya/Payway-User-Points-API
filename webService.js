@@ -42,31 +42,35 @@ class userAccount {
     '{ "payer": <payer_name>, "points": <integer>, "timestamp": <date in JS Date.toJSON() format> }'
     and adds to list of transactions pertinent to user account / updates total points
 */
-function addTransaction(data, acct){
+function addTransaction(data){
     //turn JSON string into object
     let transaction = JSON.parse(data);
 
+    //TODO check for duplicate transaction (same timestamp)
+
     if( acct.myPayers.has(transaction.payer)){
-        acct.myPayers.get(transaction.payer) += transaction.points;
+        acct.myPayers.set(transaction.payer, acct.myPayers.get(transaction.payer) + transaction.points);
     }else{
         acct.myPayers.set(transaction.payer, transaction.points);
     }
+    acct.myPayers.forEach((value,key) => console.log(key,value));
 
     //push transaction into proper location based on date (old -> new)
     // will use Array.prototype.splice() based on Date value
-    // insert where the transaction.timestamp value is both greater than or equal to the index before and less than or equal to index after
+    // insert where the current transactions timestamp is found to be earlier than the current index (start from beginning), else push on to end
     let date = new Date(transaction.timestamp);
     for (let index = 0; index < acct.myTransactions.length; index++) {
         let currDate = new Date(acct.myTransactions[index].timestamp);
         if(date < currDate){
             acct.myTransactions.splice(index, 0, transaction);
             break;
-        }else if(index == acct.myTransactions.length - 1){
+        }else if(index == (acct.myTransactions.length - 1)){
+            console.log("at the end!");
             acct.myTransactions.push(transaction);
         }
     }
-    //acct.myTransactions.push(transaction);
-    acct.totPoints += transaction.points;
+    acct.myTransactions.forEach(transaction => console.log(transaction));
+    acct.totPoints += transaction.points; //update total points count
 return 200;
 }
 
@@ -83,6 +87,9 @@ return 200;
     Returns: a list of points spent ​{ "payer": <string>, "points": <integer> }​ 
 */
 function spendPoints(numPoints){
+    if(numPoints > acct.totPoints){
+
+    }
     // check a ds holding transactions sorted old to new
     // check if subtracting transaction pts would put payer total sum neg
     // if not, spend the points
@@ -127,7 +134,7 @@ function runServer(){
     }).on('end', () => {
         body = Buffer.concat(body).toString();
           // at this point, `body` has the entire request body stored in it as a string
-        console.log("body: " + body);
+        //console.log("body: " + body);
         
         // FORMATION OF RESPONSE
         response.on('error', (err) => {
@@ -138,7 +145,7 @@ function runServer(){
                 let status_code = addTransaction(body, acct);
                 console.log("tot points now: " + acct.totPoints)
                 response.writeHead(status_code);
-                response.end("transactions added");
+                response.end("transaction added");
                 break
             case "/spend":
                 let expenses = spendPoints(request,body, acct);
