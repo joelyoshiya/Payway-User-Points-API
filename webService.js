@@ -91,19 +91,21 @@ return 200;
         We want no payer's points to go negative.
     Returns: a list of points spent ​{ "payer": <string>, "points": <integer> }​ 
 */
-function spendPoints(numPoints){
-    if(numPoints > acct.totPoints){
-
+function spendPoints(request){
+    let points = JSON.parse(request).points;
+    if(points > acct.totPoints){
+        // report that the action was aborted. Request invalid.
+        return 400
     }
     // check a ds holding transactions sorted old to new
     acct.myTransactions.forEach(transaction => 
     {
-        //do stuff
+        // check if subtracting transaction pts would put payer total sum neg
+        // if not, spend the points
+        // if so, skip transaction
+        // check if numPoints spent, if not move to next oldest transaction
     });
-    // check if subtracting transaction pts would put payer total sum neg
-    // if not, spend the points
-    // if so, skip transaction
-    // check if numPoints spent, if not move to next oldest transaction
+
 
     acct.totPoints -= numPoints;
 }
@@ -118,6 +120,9 @@ function spendPoints(numPoints){
 */
 function retPointBalances(){
     //return a data struct that only has payers and total points
+    if(acct.myPayers.size == 0){
+        return 400;
+    }
     let payload = {}
     acct.myPayers.forEach((value, key) => {
         payload[key] = value;
@@ -153,14 +158,24 @@ function runServer(){
                 response.end("transaction added");
                 break
             case "/spend":
-                let expenses = spendPoints(request,body, acct);
+                let expenses = spendPoints(body);
+                if (expenses == 400){
+                    response.writeHead(400);
+                    response.end(JSON.stringify({error: "The spending request was invalid or exceeded account balance"}));
+                    break;
+                }
                 response.writeHead(200, {'Content-Type': 'application/json'})
                 response.write(expenses);
                 response.end();
                 break
             case "/see":
-                response.writeHead(200, {'Content-Type': 'application/json'})
                 let pts = JSON.stringify(retPointBalances());
+                if (pts == 400){
+                    response.writeHead(400);
+                    response.end(JSON.stringify({error: "There are no points associated with this account"}));
+                    break;
+                }
+                response.writeHead(200, {'Content-Type': 'application/json'})
                 console.log("pts :" + pts);
                 response.write(pts);
                 response.end();
