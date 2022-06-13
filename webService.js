@@ -48,13 +48,14 @@ function addTransaction(data){
 
     //TODO check for duplicate transaction (same timestamp)
 
+    // Update list of payers with total points (used for RetPointBalances)
     if( acct.myPayers.has(transaction.payer)){
         acct.myPayers.set(transaction.payer, acct.myPayers.get(transaction.payer) + transaction.points);
     }else{
         acct.myPayers.set(transaction.payer, transaction.points);
     }
-    acct.myPayers.forEach((value,key) => console.log(key,value));
-
+    
+    // work with transactions
     if(acct.myTransactions.length == 0){
         acct.myTransactions.push(transaction);
     }else{
@@ -95,6 +96,10 @@ function spendPoints(numPoints){
 
     }
     // check a ds holding transactions sorted old to new
+    acct.myTransactions.forEach(transaction => 
+    {
+        //do stuff
+    });
     // check if subtracting transaction pts would put payer total sum neg
     // if not, spend the points
     // if so, skip transaction
@@ -108,20 +113,16 @@ function spendPoints(numPoints){
     The server will return either 200 (OK) along with the data (e.g., JSON) or 404 (NOT FOUND).
 
     outputs all point balancer per payer tied to user account
-    Returns: a list of point balances per payer ​{ "payer": <string>, "points": <integer> }​ 
+    Returns: a list of payers and their point balances in JSON format: [ "payer": <points>,...]
+    Format: JS Object (use JSTON.stringify() upon func return to convert to JSON string for)
 */
-function retPointBalances(acct){
+function retPointBalances(){
     //return a data struct that only has payers and total points
-    var pointBalances = {}; 
-    class payer_points {
-        constructor(payer, points){
-            this.payer = payer
-            this.points = points
-        }
-    }
-    acct.myTransactions.forEach(transaction => 
-       Object.assign(pointBalances, {payer:transaction.payer, points:transaction.points}));
-    return pointBalances;
+    let payload = {}
+    acct.myPayers.forEach((value, key) => {
+        payload[key] = value;
+    });
+    return payload;
 }
 
 function runServer(){
@@ -159,10 +160,10 @@ function runServer(){
                 break
             case "/see":
                 response.writeHead(200, {'Content-Type': 'application/json'})
-                let pts = JSON.stringify(retPointBalances(acct));
+                let pts = JSON.stringify(retPointBalances());
                 console.log("pts :" + pts);
                 response.write(pts);
-                response.end(pts);
+                response.end();
                 break
             default:
                 response.writeHead(404);
