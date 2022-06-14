@@ -60,7 +60,6 @@ function addTransaction(data){
             }
         }
         acct.totPoints += transaction.points; //update total points count
-        acct.myTransactions.forEach(transaction => console.log(transaction));
         return [200, "successfuly added transaction"];
     }catch(err){
         return [400,err];
