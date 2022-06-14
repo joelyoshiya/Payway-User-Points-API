@@ -92,22 +92,62 @@ return 200;
     Returns: a list of points spent ​{ "payer": <string>, "points": <integer> }​ 
 */
 function spendPoints(request){
-    let points = JSON.parse(request).points;
-    if(points > acct.totPoints){
-        // report that the action was aborted. Request invalid.
+    let spendPoints = JSON.parse(request).points;
+    if(spendPoints > acct.totPoints){
         return 400
     }
-    // check a ds holding transactions sorted old to new
-    acct.myTransactions.forEach(transaction => 
-    {
-        // check if subtracting transaction pts would put payer total sum neg
-        // if not, spend the points
-        // if so, skip transaction
-        // check if numPoints spent, if not move to next oldest transaction
-    });
+    let unspentPoints = spendPoints;
+    let expenses = [];
+    // check transactions sorted old to new (by timestamp)
+    for (let index = 0; index < acct.myTransactions.length; index++) {
+        console.log("unspent Points: " + unspentPoints);
+        // if there are no longer any points to spend, stop checking transactions
+        if(unspentPoints == 0){
+            break;
+        }
+        let transaction = acct.myTransactions[index];
+        // calculate amount to be deducted from transaction
+        let deduction = 0;
+        if( unspentPoints < transaction.points){
+            //only spend spendPoints number of points - not the whole transaction amount
+            deduction -= unspentPoints;
+        }else{
+            //spend the whole transaction amount
+            deduction -= transaction.points;
+        }
+        // since we don't want any payer's points to go negative
+        let payer = transaction.payer;
+        console.log(transaction);
+        console.log("deduction: " + deduction);
+        console.log('acct.myPayers.get(payer): ' + acct.myPayers.get(payer)); 
+        if((acct.myPayers.get(payer) + deduction) >= 0){
+            acct.myPayers.set(payer, acct.myPayers.get(payer) + deduction);
+            unspentPoints += deduction; // the calculated deduction is no longer unspent (now spent)
+            acct.totPoints += deduction; //update global counter of points for acct
+            acct.myTransactions.splice(index, 1); //remove from transactions list since points from transaction have been spent
+            index -= 1;//account for the removal of the current transaction (since points have been spent)
+            // form a receipt of expenses for response
+            let pushedPrior = false;
+            expenses.forEach(entry => {
+                if(payer == entry.payer){ 
+                    pushedPrior = true;
+                    expenses[entry] += deduction
+                }else{
+                    return;
+                }
+            })
+            if(!pushedPrior){
+                expenses.push({
+                    payer: transaction.payer,
+                    points: deduction
+                });
+            }
 
-
-    acct.totPoints -= numPoints;
+        }else{
+            continue;
+        }
+    }
+    return expenses;
 }
 
 /*  
@@ -160,18 +200,18 @@ function runServer(){
             case "/spend":
                 let expenses = spendPoints(body);
                 if (expenses == 400){
-                    response.writeHead(400);
+                    response.writeHead(400, {'Content-Type': 'application/json'});
                     response.end(JSON.stringify({error: "The spending request was invalid or exceeded account balance"}));
                     break;
                 }
                 response.writeHead(200, {'Content-Type': 'application/json'})
-                response.write(expenses);
+                response.write(JSON.stringify(expenses));
                 response.end();
                 break
             case "/see":
                 let pts = JSON.stringify(retPointBalances());
                 if (pts == 400){
-                    response.writeHead(400);
+                    response.writeHead(400, {'Content-Type': 'application/json'});
                     response.end(JSON.stringify({error: "There are no points associated with this account"}));
                     break;
                 }
