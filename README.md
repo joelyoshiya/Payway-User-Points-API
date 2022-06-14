@@ -42,4 +42,4 @@ Allows points to be spent on the user account, returning expenditures on success
 
 - NodeJS
 - node-fetch (`npm install node-fetch`) (see package.json)
-- `"type": "module"` added to package.json
+- `"type": "module"` added to package.json (webService treated as a module as part of a larger service)

@@ -1,11 +1,13 @@
 import http from 'http'
 /*
-Please write a web service that accepts HTTP requests and 
-returns responses based on the conditions outlined in the next
+    WebService.js
+    Represents a user account instance that communicates with a client
+    to update transactions on the account, see point balances,
+    and spent point balances. webService tied to a single user account instance.
  */
 class userAccount {
     constructor (){
-        this.totPoints = 0; //initialized to zero
+        this.totPoints = 0; // account points start from zero
         this.myTransactions = []; //array of transactions coming from add route
         this.myPayers = new Map(); // Map containing payer:points key-value pairs
     }    
@@ -25,7 +27,7 @@ class userAccount {
 function addTransaction(data){
     try {
         let transaction = JSON.parse(data);
-        //TODO check for duplicate transaction (same timestamp)
+        // Check for duplicate transactions
         acct.myTransactions.forEach(oldTransaction => {
             if (transaction.payer == oldTransaction.payer
                 && transaction.points == oldTransaction.points &&
@@ -39,13 +41,12 @@ function addTransaction(data){
         }else{
             acct.myPayers.set(transaction.payer, transaction.points);
         }
-        // work with transactions
+        // Add transaction to list sorted by timestamp
         if(acct.myTransactions.length == 0){
             acct.myTransactions.push(transaction);
         }else{
-            //push transaction into proper location based on date (old -> new)
-            // will use Array.prototype.splice() based on Date value
-            // insert where the current transactions timestamp is found to be earlier than the current index (start from beginning), else push on to end
+            // insert where the current transactions timestamp is found to
+            // be earlier than the current index, else push on to end
             let date = new Date(transaction.timestamp);
             for (let index = 0; index < acct.myTransactions.length; index++) {
                 let currDate = new Date(acct.myTransactions[index].timestamp);
@@ -58,7 +59,6 @@ function addTransaction(data){
                 }
             }
         }
-        //acct.myTransactions.forEach(transaction => console.log(transaction));
         acct.totPoints += transaction.points; //update total points count
         return [200, "successfuly added transaction"];
     }catch(err){
@@ -83,7 +83,7 @@ function spendPoints(request){
     try{
         let spendPoints = JSON.parse(request).points;
         if(spendPoints > acct.totPoints){
-            return 400
+            return [400, "error: spend request exceeds points available on account"];
         }
         let unspentPoints = spendPoints;
         let expenses = [];
@@ -104,15 +104,18 @@ function spendPoints(request){
                 //spend the whole transaction amount
                 deduction -= transaction.points;
             }
-            // since we don't want any payer's points to go negative
             let payer = transaction.payer;
+            // since we don't want any payer's points to go negative
             if((acct.myPayers.get(payer) + deduction) >= 0){
                 acct.myPayers.set(payer, acct.myPayers.get(payer) + deduction);
                 unspentPoints += deduction; // the calculated deduction is no longer unspent (now spent)
                 acct.totPoints += deduction; //update global counter of points for acct
-                acct.myTransactions.splice(index, 1); //remove from transactions list since points from transaction have been spent
-                index -= 1;//account for the removal of the current transaction (since points have been spent)
-                // form a receipt of expenses for response
+                acct.myTransactions[index].points -= deduction;
+                // if all points related to the transaction have been exhausted remove from transaction list
+                if(acct.myTransactions[index].points == 0){
+                    acct.myTransactions.splice(index, 1); //remove from current transactions (spent)
+                    index -= 1;//account for splicing used transaction
+                }
                 let pushedPrior = false;
                 expenses.forEach(entry => {
                     if(entry.payer == payer){ 
@@ -131,8 +134,11 @@ function spendPoints(request){
             }else{
                 continue;
             }
+        }if(unspentPoints == 0){
+            return [200, expenses];
+        }else{
+            return [500, "error: internal servor error - not all points requested to be spent were deducted"]
         }
-        return [200, expenses];
     }catch(err){
         return [400, err];
     }
@@ -149,13 +155,13 @@ function spendPoints(request){
 function retPointBalances(){
     //return a data struct that only has payers and total points
     if(acct.myPayers.size == 0){
-        return 400;
+        return [404, {error: "There are no points associated with this account"}];
     }
     let payload = {}
     acct.myPayers.forEach((value, key) => {
         payload[key] = value;
     });
-    return payload;
+    return [200, payload];
 }
 
 /*
@@ -194,33 +200,25 @@ function runServer(){
                     break;
                 }
                 let result2 = spendPoints(body);
-                if (result2[0] == 400){
+                if (result2[0] >= 400){
                     response.writeHead(result2[0]);
-                    response.end(result[1].toString());
+                    response.end(result2[1].toString());
                 }else{
                     response.writeHead(result2[0], {'Content-Type': 'application/json'});
                     response.end(JSON.stringify(result2[1]));
                 }
                 break
             case "/see":
-                let pts = JSON.stringify(retPointBalances());
-                if (pts == 400){
-                    response.writeHead(400, {'Content-Type': 'application/json'});
-                    response.end(JSON.stringify({error: "There are no points associated with this account"}));
-                    break;
-                }
-                response.writeHead(200, {'Content-Type': 'application/json'})
-                response.write(pts);
-                response.end();
+                let result3 = retPointBalances();
+                response.writeHead(result3[0],{'Content-Type': 'application/json'});
+                response.end(JSON.stringify(result3[1]));
                 break
             default:
                 response.writeHead(404);
                 response.end(JSON.stringify({error:"Resource not found"}));
         }
     });
-    }).listen(port, host, () => {
-        //console.log(`Server is running on http://${host}:${port}`);
-    });
+    }).listen(8080);
 }
 
 // initialize the user account class object
