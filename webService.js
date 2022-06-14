@@ -60,6 +60,7 @@ function addTransaction(data){
             }
         }
         acct.totPoints += transaction.points; //update total points count
+        acct.myTransactions.forEach(transaction => console.log(transaction));
         return [200, "successfuly added transaction"];
     }catch(err){
         return [400,err];
@@ -108,9 +109,9 @@ function spendPoints(request){
             // since we don't want any payer's points to go negative
             if((acct.myPayers.get(payer) + deduction) >= 0){
                 acct.myPayers.set(payer, acct.myPayers.get(payer) + deduction);
-                unspentPoints += deduction; // the calculated deduction is no longer unspent (now spent)
+                unspentPoints += deduction; // update total points yet to spend
                 acct.totPoints += deduction; //update global counter of points for acct
-                acct.myTransactions[index].points -= deduction;
+                acct.myTransactions[index].points += deduction;//add the deduction to the transaction
                 // if all points related to the transaction have been exhausted remove from transaction list
                 if(acct.myTransactions[index].points == 0){
                     acct.myTransactions.splice(index, 1); //remove from current transactions (spent)
