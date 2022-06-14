@@ -100,7 +100,7 @@ function spendPoints(request){
     let expenses = [];
     // check transactions sorted old to new (by timestamp)
     for (let index = 0; index < acct.myTransactions.length; index++) {
-        console.log("unspent Points: " + unspentPoints);
+        //console.log("unspent Points: " + unspentPoints);
         // if there are no longer any points to spend, stop checking transactions
         if(unspentPoints == 0){
             break;
@@ -117,9 +117,6 @@ function spendPoints(request){
         }
         // since we don't want any payer's points to go negative
         let payer = transaction.payer;
-        console.log(transaction);
-        console.log("deduction: " + deduction);
-        console.log('acct.myPayers.get(payer): ' + acct.myPayers.get(payer)); 
         if((acct.myPayers.get(payer) + deduction) >= 0){
             acct.myPayers.set(payer, acct.myPayers.get(payer) + deduction);
             unspentPoints += deduction; // the calculated deduction is no longer unspent (now spent)
@@ -129,9 +126,9 @@ function spendPoints(request){
             // form a receipt of expenses for response
             let pushedPrior = false;
             expenses.forEach(entry => {
-                if(payer == entry.payer){ 
+                if(entry.payer == payer){ 
                     pushedPrior = true;
-                    expenses[entry] += deduction
+                    entry.points += deduction;
                 }else{
                     return;
                 }
@@ -142,7 +139,6 @@ function spendPoints(request){
                     points: deduction
                 });
             }
-
         }else{
             continue;
         }
@@ -193,7 +189,7 @@ function runServer(){
         switch (request.url) {
             case "/add":
                 let status_code = addTransaction(body, acct);
-                console.log("tot points now: " + acct.totPoints)
+                //console.log("tot points now: " + acct.totPoints)
                 response.writeHead(status_code);
                 response.end("transaction added");
                 break
