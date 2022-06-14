@@ -3,31 +3,11 @@ import http from 'http'
 Please write a web service that accepts HTTP requests and 
 returns responses based on the conditions outlined in the next
  */
-
-
-// design specific requests/responses that are inbound and outbound on the web service
-// must be able to listen in for HTTP requests and handle response appropriately
-// must have an internal data structure with payer, points, and transaction dates specified
-
-//must architect specific responses for each route
-
-// incoming data will most likely be a JSON string (easier for transporting)
-var jsObject = { "payer": "DANNON", "points": 1000, "timestamp": "2020-11-02T14:00:00Z" };
-var transaction = JSON.stringify(jsObject); //this is the format we will expect coming to the server
-var jsObject2 = { "payer": "DANNON", "points": -200, "timestamp": "2020-10-31T15:00:00Z" }
-var transaction2 = JSON.stringify(jsObject2);
-
-
 class userAccount {
-    constructor (transactions){
+    constructor (){
         this.totPoints = 0; //initialized to zero
         this.myTransactions = []; //array of transactions coming from add route
         this.myPayers = new Map(); // Map containing payer:points key-value pairs
-
-        // this.myTransactions.push(JSON.parse(transaction)); //represent a transaction being added (JSobject)
-        // this.myTransactions.push(JSON.parse(transaction2));
-        // this.myTransactions.forEach(transaction => this.totPoints += transaction.points);
-        //console.log("my total points: " + this.totPoints);
     }    
 }
 
@@ -43,40 +23,47 @@ class userAccount {
     and adds to list of transactions pertinent to user account / updates total points
 */
 function addTransaction(data){
-    //turn JSON string into object
-    let transaction = JSON.parse(data);
-
-    //TODO check for duplicate transaction (same timestamp)
-
-    // Update list of payers with total points (used for RetPointBalances)
-    if( acct.myPayers.has(transaction.payer)){
-        acct.myPayers.set(transaction.payer, acct.myPayers.get(transaction.payer) + transaction.points);
-    }else{
-        acct.myPayers.set(transaction.payer, transaction.points);
-    }
-    
-    // work with transactions
-    if(acct.myTransactions.length == 0){
-        acct.myTransactions.push(transaction);
-    }else{
-        //push transaction into proper location based on date (old -> new)
-        // will use Array.prototype.splice() based on Date value
-        // insert where the current transactions timestamp is found to be earlier than the current index (start from beginning), else push on to end
-        let date = new Date(transaction.timestamp);
-        for (let index = 0; index < acct.myTransactions.length; index++) {
-            let currDate = new Date(acct.myTransactions[index].timestamp);
-            if(date < currDate){
-                acct.myTransactions.splice(index, 0, transaction);
-                break;
-            }else if(index == (acct.myTransactions.length - 1)){
-                acct.myTransactions.push(transaction);
-                break;
+    try {
+        let transaction = JSON.parse(data);
+        //TODO check for duplicate transaction (same timestamp)
+        acct.myTransactions.forEach(oldTransaction => {
+            if (transaction.payer == oldTransaction.payer
+                && transaction.points == oldTransaction.points &&
+                transaction.timestamp == transaction.timestamp){
+                    throw new Error('duplicate transaction cannot be added');
+                }
+        })
+        // Update list of payers with total points (used for RetPointBalances)
+        if( acct.myPayers.has(transaction.payer)){
+            acct.myPayers.set(transaction.payer, acct.myPayers.get(transaction.payer) + transaction.points);
+        }else{
+            acct.myPayers.set(transaction.payer, transaction.points);
+        }
+        // work with transactions
+        if(acct.myTransactions.length == 0){
+            acct.myTransactions.push(transaction);
+        }else{
+            //push transaction into proper location based on date (old -> new)
+            // will use Array.prototype.splice() based on Date value
+            // insert where the current transactions timestamp is found to be earlier than the current index (start from beginning), else push on to end
+            let date = new Date(transaction.timestamp);
+            for (let index = 0; index < acct.myTransactions.length; index++) {
+                let currDate = new Date(acct.myTransactions[index].timestamp);
+                if(date < currDate){
+                    acct.myTransactions.splice(index, 0, transaction);
+                    break;
+                }else if(index == (acct.myTransactions.length - 1)){
+                    acct.myTransactions.push(transaction);
+                    break;
+                }
             }
         }
-    }
-    acct.myTransactions.forEach(transaction => console.log(transaction));
-    acct.totPoints += transaction.points; //update total points count
-return 200;
+        //acct.myTransactions.forEach(transaction => console.log(transaction));
+        acct.totPoints += transaction.points; //update total points count
+        return [200, "successfuly added transaction"];
+    }catch(err){
+        return [400,err];
+    }   
 }
 
 /*
@@ -90,60 +77,65 @@ return 200;
         We want the oldest points to be spent first (oldest based on transaction timestamp, not the order they’re received)
         We want no payer's points to go negative.
     Returns: a list of points spent ​{ "payer": <string>, "points": <integer> }​ 
+
 */
 function spendPoints(request){
-    let spendPoints = JSON.parse(request).points;
-    if(spendPoints > acct.totPoints){
-        return 400
-    }
-    let unspentPoints = spendPoints;
-    let expenses = [];
-    // check transactions sorted old to new (by timestamp)
-    for (let index = 0; index < acct.myTransactions.length; index++) {
-        //console.log("unspent Points: " + unspentPoints);
-        // if there are no longer any points to spend, stop checking transactions
-        if(unspentPoints == 0){
-            break;
+    try{
+        let spendPoints = JSON.parse(request).points;
+        if(spendPoints > acct.totPoints){
+            return 400
         }
-        let transaction = acct.myTransactions[index];
-        // calculate amount to be deducted from transaction
-        let deduction = 0;
-        if( unspentPoints < transaction.points){
-            //only spend spendPoints number of points - not the whole transaction amount
-            deduction -= unspentPoints;
-        }else{
-            //spend the whole transaction amount
-            deduction -= transaction.points;
-        }
-        // since we don't want any payer's points to go negative
-        let payer = transaction.payer;
-        if((acct.myPayers.get(payer) + deduction) >= 0){
-            acct.myPayers.set(payer, acct.myPayers.get(payer) + deduction);
-            unspentPoints += deduction; // the calculated deduction is no longer unspent (now spent)
-            acct.totPoints += deduction; //update global counter of points for acct
-            acct.myTransactions.splice(index, 1); //remove from transactions list since points from transaction have been spent
-            index -= 1;//account for the removal of the current transaction (since points have been spent)
-            // form a receipt of expenses for response
-            let pushedPrior = false;
-            expenses.forEach(entry => {
-                if(entry.payer == payer){ 
-                    pushedPrior = true;
-                    entry.points += deduction;
-                }else{
-                    return;
-                }
-            })
-            if(!pushedPrior){
-                expenses.push({
-                    payer: transaction.payer,
-                    points: deduction
-                });
+        let unspentPoints = spendPoints;
+        let expenses = [];
+        // check transactions sorted old to new (by timestamp)
+        for (let index = 0; index < acct.myTransactions.length; index++) {
+            //console.log("unspent Points: " + unspentPoints);
+            // if there are no longer any points to spend, stop checking transactions
+            if(unspentPoints == 0){
+                break;
             }
-        }else{
-            continue;
+            let transaction = acct.myTransactions[index];
+            // calculate amount to be deducted from transaction
+            let deduction = 0;
+            if( unspentPoints < transaction.points){
+                //only spend spendPoints number of points - not the whole transaction amount
+                deduction -= unspentPoints;
+            }else{
+                //spend the whole transaction amount
+                deduction -= transaction.points;
+            }
+            // since we don't want any payer's points to go negative
+            let payer = transaction.payer;
+            if((acct.myPayers.get(payer) + deduction) >= 0){
+                acct.myPayers.set(payer, acct.myPayers.get(payer) + deduction);
+                unspentPoints += deduction; // the calculated deduction is no longer unspent (now spent)
+                acct.totPoints += deduction; //update global counter of points for acct
+                acct.myTransactions.splice(index, 1); //remove from transactions list since points from transaction have been spent
+                index -= 1;//account for the removal of the current transaction (since points have been spent)
+                // form a receipt of expenses for response
+                let pushedPrior = false;
+                expenses.forEach(entry => {
+                    if(entry.payer == payer){ 
+                        pushedPrior = true;
+                        entry.points += deduction;
+                    }else{
+                        return;
+                    }
+                })
+                if(!pushedPrior){
+                    expenses.push({
+                        payer: transaction.payer,
+                        points: deduction
+                    });
+                }
+            }else{
+                continue;
+            }
         }
+        return [200, expenses];
+    }catch(err){
+        return [400, err];
     }
-    return expenses;
 }
 
 /*  
@@ -166,43 +158,49 @@ function retPointBalances(){
     return payload;
 }
 
+/*
+    Runs server and services requests from client
+*/
 function runServer(){
     const host = 'localhost';
     const port = 8080
 
     http.createServer((request, response) => {
-    const { headers, method, url } = request;
     let body = [];
     request.on('error', (err) => {
         console.error(err);
     }).on('data', (chunk) => {
         body.push(chunk);
     }).on('end', () => {
-        body = Buffer.concat(body).toString();
-          // at this point, `body` has the entire request body stored in it as a string
-        //console.log("body: " + body);
-        
-        // FORMATION OF RESPONSE
+        body = Buffer.concat(body).toString();        
         response.on('error', (err) => {
         console.error(err);
         });
         switch (request.url) {
             case "/add":
-                let status_code = addTransaction(body, acct);
-                //console.log("tot points now: " + acct.totPoints)
-                response.writeHead(status_code);
-                response.end("transaction added");
-                break
-            case "/spend":
-                let expenses = spendPoints(body);
-                if (expenses == 400){
+                if (body.length <= 0){
                     response.writeHead(400, {'Content-Type': 'application/json'});
-                    response.end(JSON.stringify({error: "The spending request was invalid or exceeded account balance"}));
+                    response.end(JSON.stringify({error: "empty body"}));
                     break;
                 }
-                response.writeHead(200, {'Content-Type': 'application/json'})
-                response.write(JSON.stringify(expenses));
-                response.end();
+                let result = addTransaction(body);
+                response.writeHead(result[0]);
+                response.end(result[1].toString());
+                break
+            case "/spend":
+                if (body.length <= 0){
+                    response.writeHead(400, {'Content-Type': 'application/json'});
+                    response.end(JSON.stringify({error: "empty body"}));
+                    break;
+                }
+                let result2 = spendPoints(body);
+                if (result2[0] == 400){
+                    response.writeHead(result2[0]);
+                    response.end(result[1].toString());
+                }else{
+                    response.writeHead(result2[0], {'Content-Type': 'application/json'});
+                    response.end(JSON.stringify(result2[1]));
+                }
                 break
             case "/see":
                 let pts = JSON.stringify(retPointBalances());
@@ -212,7 +210,6 @@ function runServer(){
                     break;
                 }
                 response.writeHead(200, {'Content-Type': 'application/json'})
-                console.log("pts :" + pts);
                 response.write(pts);
                 response.end();
                 break
@@ -220,24 +217,12 @@ function runServer(){
                 response.writeHead(404);
                 response.end(JSON.stringify({error:"Resource not found"}));
         }
-        // Note: the 2 lines above could be replaced with this next one:
-
-        //const responseBody = { headers, method, url, body };
-
-        //response.write(JSON.stringify(responseBody));
-        //response.end();
-
-        // Note: the 2 lines above could be replaced with this next one:
-        // response.end(JSON.stringify(responseBody))
-
-        // END OF NEW STUFF
     });
     }).listen(port, host, () => {
-        console.log(`Server is running on http://${host}:${port}`);
+        //console.log(`Server is running on http://${host}:${port}`);
     });
 }
 
 // initialize the user account class object
-var acct = new userAccount(transaction);
-// run server
+var acct = new userAccount();
 runServer();
