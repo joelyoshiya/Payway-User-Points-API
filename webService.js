@@ -89,7 +89,6 @@ function spendPoints(request){
         let expenses = [];
         // check transactions sorted old to new (by timestamp)
         for (let index = 0; index < acct.myTransactions.length; index++) {
-            //console.log("unspent Points: " + unspentPoints);
             // if there are no longer any points to spend, stop checking transactions
             if(unspentPoints == 0){
                 break;
