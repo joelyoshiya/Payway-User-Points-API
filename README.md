@@ -1,4 +1,4 @@
-# Fetch Rewards Coding Exercise - Backend Software Engineering
+# PayWay - User Points API
 
 My solution is the following:
 
