@@ -3,13 +3,24 @@ Test Driven Development applied to the Payway User Points API (for python implem
 Testing class for the Payway User Points API
 Will test:
 - GET /users/{user_id}/points
-- POST /users/{user_id}/spend
+- PUT /users/{user_id}/spend
 - POST /users/{user_id}/transaction
 """
 import unittest
 import datetime
 
-from main import *
+# # import the package
+# import antigravity
+
+# # import the antigravity module
+# from antigravity import antigravity
+
+# # or an object inside the antigravity module
+# from antigravity.antigravity import my_object
+
+import main
+from main import main
+from main.main import *
 
 # TODO create an example input for the create_transaction endpoint
 
@@ -22,7 +33,7 @@ class TestPaywaySystem(unittest.TestCase):
 
     def test_create_transaction(self):
         # Test for valid transaction
-        transaction_1 = Transaction(payer=payer.dannon, points=100, timestamp=datetime.datetime.now())
+        transaction_1 = Transaction(payer=Payer.dannon, points=100, timestamp=datetime.datetime.now())
 
 if __name__ == "__main__":
    unittest.main()

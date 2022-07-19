@@ -4,7 +4,12 @@ The Payway user points API allows points related to a user's transactions (for e
 
 ## Running the server
 
-Use the command: `uvicorn main:app --reload` in the `main` directory to run the server
+1. Navigate to `/python_solution/main`
+
+2. When in the `main` directory, run `uvicorn main:app --reload` on the command line
+
+The server is now up and running!
+
 ## Routes
 
 Routes are first and foremost tied to individual user accounts via the path `/users/{username}`
