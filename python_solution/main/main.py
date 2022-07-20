@@ -1,5 +1,5 @@
 import datetime
-from typing import Dict
+from typing import Dict, List
 from enum import Enum
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -39,9 +39,12 @@ class Spend(BaseModel):
     points: int
 
 # Response Body models ------------------------------------------------------------
-class SpendResponse(BaseModel):
+class Spender(BaseModel):
     payer: Payer
     points: int
+
+class SpendReponse(BaseModel):
+    spenders: List[Spender]
 
 class BalanceResponse(BaseModel):
     # __root__ is our way to tell Pydantic that our model doesn’t represent a regular key-value model.
@@ -67,6 +70,10 @@ class User(BaseModel):
 class Users(BaseModel):
     __root__: Dict[int, User]
 
+# TODO figure out if it is redundant to store a model equivalent to the balance response in the user class
+# class UserPayers(BaseModel):
+#     __root__: Dict[Payer, int]
+
 # Endpoint functions -----------------------------------------------------------``
 @app.get("/")
 async def root():
@@ -82,13 +89,21 @@ async def read_item(user_id: str):
     return {"user_id": user_id, "points": 100}
 
 # router that handles all the operations on the user's points balance
+
+# get the points balance for a user -> return balance response
 @app.get("/users/{user_id}: str/{user_route}")
 async def get_route(user_route: UserRoute, user_id: str):
-    if user_route == UserRoute.add:
-        return {"model_name": user_route, "user_id": user_id, "message": "going to add a transaction"}
+    if user_route == UserRoute.points:
+        return {"model_name": user_route, "user_id": user_id, "message": "going to get points"}
 
+# spend points for a user -> return spend response  
+@app.put("/users/{user_id}/{user_route}")
+async def put_route(user_route: UserRoute, user_id: str):
     if user_route == UserRoute.spend:
         return {"model_name": user_route, "user_id": user_id, "message": "going to spend points"}
 
-    if user_route == UserRoute.points:
-        return {"model_name": user_route, "user_id": user_id, "message": "going to get points"}
+# add transactions for a specific Payer and date
+@app.post("/users/{user_id}/{user_route}")
+async def post_route(user_route: UserRoute, user_id: str):
+    if user_route == UserRoute.add:
+        return {"model_name": user_route, "user_id": user_id, "message": "going to add a transaction"}

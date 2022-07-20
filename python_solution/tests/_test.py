@@ -9,15 +9,6 @@ Will test:
 import unittest
 import datetime
 
-# # import the package
-# import antigravity
-
-# # import the antigravity module
-# from antigravity import antigravity
-
-# # or an object inside the antigravity module
-# from antigravity.antigravity import my_object
-
 import main
 from main import main
 from main.main import *
