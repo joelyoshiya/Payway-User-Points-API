@@ -14,6 +14,8 @@ class UserRoute(str, Enum):
     points = "points"
 
 # Enum class for possible payers from client
+# Payers are partner companies that can supply points for users (in exchange for loyalty to their products)
+# Payers must be registered with the system beforehand and only registered partners can supply points via tranasaction payloads
 class Payer(str,Enum):
     dannon = 'DANNON'
     unilever = 'UNILEVER'
@@ -31,6 +33,8 @@ class Transaction(BaseModel):
     # use pre-validator
     # see: https://pydantic-docs.helpmanual.io/usage/validators/
 
+
+# Represents a spend request for a user
 class Spend(BaseModel):
     points: int
 
@@ -40,8 +44,28 @@ class SpendResponse(BaseModel):
     points: int
 
 class BalanceResponse(BaseModel):
+    # __root__ is our way to tell Pydantic that our model doesn’t represent a regular key-value model.
     __root__: Dict[Payer, int]
 
+
+# Internal Data Models ---------------------------------------------------------
+# TODO find way to store a persistent representation of data in web server
+# considering: local storage to start, then DB using SQLAlchemy - see https://fastapi.tiangolo.com/tutorial/sql-databases/
+# User class
+class User(BaseModel):
+    id: int # path variable used to get user resource
+    name: str
+    email: str
+    points: int # determined by transactions
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
+    transactions: Dict[Transaction] #stores all transactions for a user 
+    expenditures: Dict[Spend] #stores all expenditures for a user -> affects the balance response
+    balanceResponse: BalanceResponse #stores the points balance for each payer (partner firm)
+
+# Users class - set of users
+class Users(BaseModel):
+    __root__: Dict[int, User]
 
 # Endpoint functions -----------------------------------------------------------``
 @app.get("/")
