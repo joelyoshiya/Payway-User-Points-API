@@ -25,6 +25,7 @@ class Payer(str,Enum):
 
 # Request Body Models ---------------------------------------------------------
 class Transaction(BaseModel):
+    tid: int
     payer: Payer
     points: int
     timestamp: datetime.datetime
@@ -62,8 +63,8 @@ class User(BaseModel):
     points: int # determined by transactions
     created_at: datetime.datetime
     updated_at: datetime.datetime
-    transactions: Dict[Transaction] #stores all transactions for a user 
-    expenditures: Dict[Spend] #stores all expenditures for a user -> affects the balance response
+    transactions: Dict[int, Transaction] #stores all transactions for a user 
+    expenditures: Dict[int, Spend] #stores all expenditures for a user -> affects the balance response
     balanceResponse: BalanceResponse #stores the points balance for each payer (partner firm)
 
 # Users class - set of users
@@ -78,10 +79,6 @@ class Users(BaseModel):
 @app.get("/")
 async def root():
     return {"message": "wassup big stepper"}
-
-@app.get("/status")
-async def status():
-    return {"status": "web server working"}
 
 # return the user id and their points balance
 @app.get("/users/{user_id}")
