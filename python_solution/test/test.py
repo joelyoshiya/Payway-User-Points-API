@@ -83,29 +83,154 @@ class TestPaywaySystem(unittest.TestCase):
     # Validating Transactions
     def test_create_transaction(self):
         # Test for valid transaction
-        transaction_1 = Transaction(tid=1,payer=Payer.dannon, points=100, timestamp=datetime.datetime.now())
-        pass
+        transaction_1 = Transaction(tid=1,payer="DANNON", points=1000, timestamp="2020-11-02T14:00:00Z")
+        # TODO TypeError: Object of type datetime is not JSON serializable
+        response = client.post( 
+            "/users/jdoe/transactions/",
+            json=transaction_1.dict(),
+        )
+        assert response.status_code == 200
+        assert response.json() == {
+            "id": 1,
+            "payer": "dannon",
+            "points": 100,
+            "timestamp": "2020-11-02T14:00:00Z"
+        }
 
     def test_create_transaction_bad_payer(self):
-        pass
+        transaction_2 = Transaction(tid=2,payer="bad_payer", points=100, timestamp="2020-11-02T14:00:00Z")
+        response = client.post(
+            "/users/jdoe/transactions/",
+            json=transaction_2.dict(),
+        )
+        assert response.status_code == 400
+        assert response.json() == {
+            "detail": "payer not found"
+        }
 
     def test_create_transaction_bad_points(self):
-        pass
+        transaction_3 = Transaction(tid=3,payer="DANNON", points="bad", timestamp="2020-11-02T14:00:00Z")
+        response = client.post(
+            "/users/jdoe/transactions/",
+            json=transaction_3.dict(),
+        )
+        assert response.status_code == 400
+        assert response.json() == {
+            "detail": "invalid points"
+        }
+
+    def test_create_transaction_points_exceed_max(self):
+        transaction_4 = Transaction(tid=4,payer="DANNON", points=1000000000, timestamp="2020-11-02T14:00:00Z")
+        response = client.post(
+            "/users/jdoe/transactions/",
+            json=transaction_4.dict(),
+        )
+        assert response.status_code == 400
+        assert response.json() == {
+            "detail": "points exceed max for a single transaction"
+        }
+    
+    def test_create_transaction_points_exceed_min(self):
+        transaction_4 = Transaction(tid=4,payer="DANNON", points=-1000000000, timestamp="2020-11-02T14:00:00Z")
+        response = client.post(
+            "/users/jdoe/transactions/",
+            json=transaction_4.dict(),
+        )
+        assert response.status_code == 400
+        assert response.json() == {
+            "detail": "points exceed minimum for a single transaction"
+        }
 
     def test_create_transaction_bad_date(self):
-        pass
+        transaction_5 = Transaction(tid=5,payer="DANNON", points=-1000000000, timestamp="malformed date")
+        response = client.post(
+            "/users/jdoe/transactions/",
+            json=transaction_5.dict(),
+        )
+        assert response.status_code == 400
+        assert response.json() == {
+            "detail": "malformed date"
+        }
 
-    
-    # Validating Account State post Transaction POST
-    def test_get_balance(self):
-        pass
+
+    # Now post rest of valid transactions to account
+    def test_post_rest_transactions(self):
+        transaction_2 = Transaction(tid=2,payer="UNILEVER", points=200, timestamp="2020-10-31T11:00:00Z")
+        transaction_3 = Transaction(tid=3,payer="DANNON", points=-200, timestamp="2020-10-31T15:00:00Z")
+        transaction_4 = Transaction(tid=4,payer="MILLER COORS", points=10000, timestamp="2020-11-01T14:00:00Z")
+        transaction_5 = Transaction(tid=5,payer="DANNON", points=300, timestamp="2020-10-31T10:00:00Z")
+        # now post rest of valid transactions
+        transactions = [transaction_2, transaction_3, transaction_4, transaction_5]
+        for transaction in transactions:
+            response = client.post(
+                "/users/jdoe/transactions/",
+                json=transaction.dict(),
+            )
+            assert response.status_code == 200
+            # validate full transaction payload
+            assert response.json() == {
+                "id": transaction.tid,
+                "payer": transaction.payer,
+                "points": transaction.points,
+                "timestamp": transaction.timestamp
+            }
+
+    # Validating Account State before and after spending
+    def test_get_balance_pre_spend(self):
+        response = client.get(
+            "/users/jdoe/points/"
+        )
+        assert response.status_code == 200
+        assert response.json() == {
+        "DANNON": 1100,
+        "UNILEVER": 200,
+        "MILLER COORS": 10000
+        }
 
     # Validating correct spending behavior
     def test_spend_points(self):
-        pass
+        # TODO figure out if should be PUT or POST
+        response = client.put(
+            "/users/jdoe/spend/",
+            json={"points": 5000}
+        )
+        assert response.status_code == 200
+        assert response.json() == {
+            { "payer": "DANNON", "points": -100 },
+            { "payer": "UNILEVER", "points": -200 },
+            { "payer": "MILLER COORS", "points": -4700 }
+        }
+    
+    def test_spend_points_exceed_balance(self):
+        response = client.put(
+            "/users/jdoe/spend/",
+            json={"points": 100000000}
+        )
+        assert response.status_code == 400
+        assert response.json() == {
+            "detail": "spending exceeds account balance"
+        }
+    
+    def test_spend_points_below_minimum(self):
+        response = client.put(
+            "/users/jdoe/spend/",
+            json={"points": 1}
+        )
+        assert response.status_code == 400
+        assert response.json() == {
+            "detail": "spending below minimum spending amount"
+        }
 
-    def test_spend_points_bad_request(self):
-        pass
+    def test_get_balance_post_spend(self):
+        response = client.get(
+            "/users/jdoe/points/"
+        )
+        assert response.status_code == 200
+        assert response.json() == {
+            "DANNON": 1000,
+            "UNILEVER": 0,
+            "MILLER COORS": 5300
+        }
 
 if __name__ == "__main__":
    unittest.main()

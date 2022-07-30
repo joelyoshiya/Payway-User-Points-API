@@ -9,7 +9,7 @@ app = FastAPI()
 # Enum classes ---------------------------------------------------------------
 # Enum class for user routes
 class UserRoute(str, Enum):
-    add = "add"
+    transactions = "transactions"
     spend = "spend"
     points = "points"
 
@@ -104,5 +104,5 @@ async def put_route(user_route: UserRoute, user_id: str):
 # add transactions for a specific Payer and date
 @app.post("/users/{user_id}/{user_route}")
 async def post_route(user_route: UserRoute, user_id: str):
-    if user_route == UserRoute.add:
+    if user_route == UserRoute.transactions:
         return {"model_name": user_route, "user_id": user_id, "message": "going to add a transaction"}
