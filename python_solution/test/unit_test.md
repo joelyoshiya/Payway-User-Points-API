@@ -14,3 +14,12 @@ new_project
     └── test_antigravity.py
 
 ```
+
+## Run Tests
+
+To run the test:
+
+```txt
+cd python_solution
+python -m unittest test.test
+```

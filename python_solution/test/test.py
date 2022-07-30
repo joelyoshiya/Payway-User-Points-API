@@ -22,7 +22,7 @@ class TestPaywaySystem(unittest.TestCase):
     def test_read_main(self):
         response = client.get("/")
         assert response.status_code == 200
-        assert response.json() == {"message": "wassup big stepper"}
+        assert response.json() == {"message": "server up and running"}
 
     # Account Creation
     def test_create_account(self):
@@ -30,11 +30,24 @@ class TestPaywaySystem(unittest.TestCase):
         # response should be confirmation that the account was created with some info about the account
         pass
 
+    def test_create_account_bad_request(self):
+        pass
+
     # Validating Transactions
-    def test_post_transaction(self):
+    def test_create_transaction(self):
         # Test for valid transaction
         transaction_1 = Transaction(tid=1,payer=Payer.dannon, points=100, timestamp=datetime.datetime.now())
         pass
+
+    def test_create_transaction_bad_payer(self):
+        pass
+
+    def test_create_transaction_bad_points(self):
+        pass
+
+    def test_create_transaction_bad_date(self):
+        pass
+
     
     # Validating Account State post Transaction POST
     def test_get_balance(self):
@@ -42,6 +55,9 @@ class TestPaywaySystem(unittest.TestCase):
 
     # Validating correct spending behavior
     def test_spend_points(self):
+        pass
+
+    def test_spend_points_bad_request(self):
         pass
 
 if __name__ == "__main__":
