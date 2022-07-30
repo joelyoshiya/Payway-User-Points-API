@@ -26,12 +26,59 @@ class TestPaywaySystem(unittest.TestCase):
 
     # Account Creation
     def test_create_account(self):
-        # post user info to create account
-        # response should be confirmation that the account was created with some info about the account
-        pass
+        response = client.post(
+            "/users/", 
+            json={"firstName": "John", "lastName": "Doe", "email": "john.doe@gmail.com", "userName" : "jdoe"},
+        )
+        assert response.status_code == 200
+        assert response.json() == {
+            "id": 1,
+            "userName": "jdoe",
+            "message": "account created"
+        }
 
-    def test_create_account_bad_request(self):
-        pass
+    def test_create_duplicate_username(self):
+        response = client.post(
+            "/users/", 
+            json={"firstName": "bad", "lastName": "request", "email": "bad.request@gmail.com", "userName" : "jdoe"},
+        )
+        assert response.status_code == 400
+        assert response.json() == {
+            "detail": "username is taken"
+        }
+    
+    def test_create_duplicate_email(self):
+        response = client.post(
+            "/users/", 
+            json={"firstName": "same", "lastName": "mail", "email": "john.doe@gmail.com", "userName" : "sameEmail"},
+        )
+        assert response.status_code == 400
+        assert response.json() == {
+            "detail": "account already created with this email"
+        }
+
+    # Testing User Account getter
+    def test_create_duplicate_account(self):
+        response = client.get(
+            "/users/jdoe",
+        )
+        assert response.status_code == 200
+        assert response.json() == {
+            "id": 1,
+            "userName": "jdoe",
+            "firstName": "John",
+            "lastName": "Doe",
+            "email": "john.doe@gmail.com"
+        }
+
+    def test_get_inexistent_account(self):
+        response = client.get(
+            "/users/bad_user",
+        )
+        assert response.status_code == 404
+        assert response.json() == {
+            "detail": "user not found"
+        }
 
     # Validating Transactions
     def test_create_transaction(self):

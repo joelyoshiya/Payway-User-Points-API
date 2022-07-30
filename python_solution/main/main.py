@@ -58,7 +58,9 @@ class BalanceResponse(BaseModel):
 # User class
 class User(BaseModel):
     id: int # path variable used to get user resource
-    name: str
+    firstName: str
+    lastName: str
+    userName: str
     email: str
     points: int # determined by transactions
     created_at: datetime.datetime

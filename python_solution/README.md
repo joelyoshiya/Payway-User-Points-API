@@ -16,6 +16,8 @@ Routes are first and foremost tied to individual user accounts via the path `/us
 
 For example, the route for user with username `yoshi` would be `http://127.0.0.1:8000/users/yoshi`
 
+A user account can be created by posting user first,last, and username to the `/users/` endpoint.
+
 Routes are specified as follows:
 
 - /add : allows JSON transaction data to be added to the user account
